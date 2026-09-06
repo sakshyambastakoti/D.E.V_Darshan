@@ -4,7 +4,7 @@ This project currently uses PlatformIO with:
 
 - Board: `esp32cam`
 - Framework: `arduino`
-- Source layout: `src_dir = .` (root folder is treated as source)
+- Source layout: `src_dir = src`, `include_dir = include`
 
 This guide shows how to safely add another framework (for example `espidf`) without breaking your current Arduino build.
 
@@ -26,8 +26,8 @@ Example:
 
 ```ini
 [platformio]
-src_dir = .
-include_dir = .
+src_dir = src
+include_dir = include
 
 [env:esp32cam]
 platform = espressif32
