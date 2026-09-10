@@ -25,10 +25,10 @@
 #include <U8g2lib.h>
 
 // ---------------------------------------------------------------------------
-// Hardware Pin Configuration (Recommended for ESP32-S3 Super Mini)
+// Hardware Pin Configuration (ESP32-S3 Super Mini)
 // ---------------------------------------------------------------------------
-#define I2C_SDA_PIN     1     // Default SDA
-#define I2C_SCL_PIN     2     // Default SCL
+#define I2C_SDA_PIN     1     // Primary SDA
+#define I2C_SCL_PIN     2     // Primary SCL
 #define I2C_ALT_SDA     8     // Alternate SDA (if user wired to GPIO 8)
 #define I2C_ALT_SCL     9     // Alternate SCL (if user wired to GPIO 9)
 
@@ -56,6 +56,7 @@ static ButtonTest buttons[] = {
 static U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C *u8g2 = nullptr;
 static bool oledDetected = false;
 static uint8_t oledSda = 0, oledScl = 0;
+static bool initialReportPrinted = false;
 
 // ---------------------------------------------------------------------------
 // Helper: Print Section Header
@@ -82,7 +83,6 @@ void diagnoseChip() {
     Serial.printf("  CPU Clock Frequency:   %u MHz\n", ESP.getCpuFreqMHz());
     Serial.printf("  SDK Version:           %s\n", ESP.getSdkVersion());
 
-    // Features flag check
     Serial.print("  Silicon Features:      ");
     if (chip_info.features & CHIP_FEATURE_WIFI_BGN) Serial.print("[WiFi 2.4GHz] ");
     if (chip_info.features & CHIP_FEATURE_BLE)      Serial.print("[BLE 5.0] ");
@@ -91,7 +91,6 @@ void diagnoseChip() {
     if (chip_info.features & CHIP_FEATURE_EMB_PSRAM)Serial.print("[Embedded PSRAM] ");
     Serial.println();
 
-    // Internal Temperature Sensor (ESP32-S3 has built-in tsens)
     #if defined(temperatureRead)
     float tempC = temperatureRead();
     Serial.printf("  Core Temperature:      %.1f °C (%.1f °F)\n", tempC, (tempC * 9.0 / 5.0) + 32.0);
@@ -111,20 +110,17 @@ void diagnoseFlash() {
 
     const char* modeStr = "UNKNOWN";
     switch (flashMode) {
-        case FM_QIO:  modeStr = "QIO (Quad I/O - Fast)"; break;
+        case FM_QIO:  modeStr = "QIO (Quad I/O)"; break;
         case FM_QOUT: modeStr = "QOUT (Quad Output)"; break;
-        case FM_DIO:  modeStr = "DIO (Dual I/O)"; break;
+        case FM_DIO:  modeStr = "DIO (Dual I/O - Active)"; break;
         case FM_DOUT: modeStr = "DOUT (Dual Output)"; break;
-        case FM_FAST_READ: modeStr = "FAST_READ"; break;
-        case FM_SLOW_READ: modeStr = "SLOW_READ"; break;
         default: break;
     }
 
-    Serial.printf("  Configured Flash Size: %.2f MB (%u bytes)\n", flashMB, flashBytes);
+    Serial.printf("  Detected Flash Size:   %.2f MB (%u bytes)\n", flashMB, flashBytes);
     Serial.printf("  Flash SPI Speed:       %u MHz\n", flashSpeed / 1000000);
     Serial.printf("  Flash SPI Mode:        %s\n", modeStr);
 
-    // Read real JEDEC ID via esp_flash
     uint32_t flash_id = 0;
     if (esp_flash_read_id(NULL, &flash_id) == ESP_OK) {
         uint8_t mfg_id = flash_id & 0xFF;
@@ -163,19 +159,17 @@ void diagnosePSRAM() {
     bool psramActive = psramFound();
 
     Serial.printf("  eFuse Emb PSRAM Flag:  %s\n", hasEmbeddedPsram ? "YES (Hardware detected)" : "NO");
-    Serial.printf("  Runtime PSRAM Active:  %s\n", psramActive ? "YES (Initialized & usable)" : "NO / Not enabled in firmware");
+    Serial.printf("  Runtime PSRAM Active:  %s\n", psramActive ? "YES (Initialized & usable)" : "NO (Not present or disabled)");
 
     if (psramActive) {
         uint32_t totalPsram = ESP.getPsramSize();
         uint32_t freePsram  = ESP.getFreePsram();
         Serial.printf("  Total PSRAM Available: %u bytes (%.2f MB)\n", totalPsram, totalPsram / (1024.0 * 1024.0));
         Serial.printf("  Free PSRAM Available:  %u bytes (%.2f MB)\n", freePsram, freePsram / (1024.0 * 1024.0));
-        Serial.println("  ==> EXCELLENT: High-speed PSRAM can cache entire documents in RAM!");
     } else {
-        Serial.println("  ==> NOTE: If your board has 2MB/8MB PSRAM, ensure `board_build.arduino.memory_type`");
-        Serial.println("            and `-DBOARD_HAS_PSRAM` are set in platformio.ini.");
-        Serial.println("            If this is a standard 4MB/8MB Flash without PSRAM, 512KB SRAM is more than");
-        Serial.println("            enough for all D.E.V_Darshan v2 features!");
+        Serial.println("  ==> RESULT: Standard 4MB Flash without PSRAM.");
+        Serial.println("      With ~340 KB of free internal SRAM, you have massive headroom for");
+        Serial.println("      the entire text reader, LittleFS, and Wi-Fi portal without needing PSRAM!");
     }
 }
 
@@ -188,12 +182,12 @@ void diagnoseLittleFS() {
     if (LittleFS.begin(true)) {
         size_t totalBytes = LittleFS.totalBytes();
         size_t usedBytes  = LittleFS.usedBytes();
-        Serial.println("  LittleFS Mount:        SUCCESS (Format on fail: enabled)");
+        Serial.println("  LittleFS Mount:        SUCCESS");
         Serial.printf("  LittleFS Total Space:  %u bytes (%.2f KB / %.2f MB)\n", totalBytes, totalBytes / 1024.0, totalBytes / (1024.0 * 1024.0));
         Serial.printf("  LittleFS Used Space:   %u bytes (%.2f KB)\n", usedBytes, usedBytes / 1024.0);
         Serial.printf("  LittleFS Free Space:   %u bytes (%.2f KB)\n", totalBytes - usedBytes, (totalBytes - usedBytes) / 1024.0);
     } else {
-        Serial.println("  LittleFS Mount:        FAILED (Check partition table)");
+        Serial.println("  LittleFS Mount:        FAILED");
     }
 }
 
@@ -201,9 +195,10 @@ void diagnoseLittleFS() {
 // 6. I2C Bus Scanner & 0.91" OLED Test
 // ---------------------------------------------------------------------------
 bool scanI2cBus(uint8_t sda, uint8_t scl) {
-    Serial.printf("\n  Scanning I2C bus on SDA = GPIO%d, SCL = GPIO%d...\n", sda, scl);
+    Serial.printf("\n  Scanning I2C on SDA=GPIO%d, SCL=GPIO%d...\n", sda, scl);
     Wire.begin(sda, scl);
-    Wire.setClock(400000); // 400kHz fast mode
+    Wire.setTimeOut(50);
+    Wire.setClock(400000);
 
     int foundDevices = 0;
     bool foundOled = false;
@@ -213,9 +208,9 @@ bool scanI2cBus(uint8_t sda, uint8_t scl) {
         uint8_t error = Wire.endTransmission();
 
         if (error == 0) {
-            Serial.printf("    -> Found I2C Device at address: 0x%02X", addr);
+            Serial.printf("    -> Found I2C device at: 0x%02X", addr);
             if (addr == 0x3C || addr == 0x3D) {
-                Serial.print("  <-- [MATCH] SSD1306 0.91\" OLED Display!");
+                Serial.print("  <-- [MATCH] 0.91\" SSD1306 OLED!");
                 foundOled = true;
             }
             Serial.println();
@@ -233,14 +228,12 @@ bool scanI2cBus(uint8_t sda, uint8_t scl) {
 void diagnoseI2CAndOled() {
     printHeader("6. I2C BUS SCANNER & 0.91\" OLED PROBE");
 
-    // Try primary pins GPIO1 and GPIO2
+    oledDetected = false;
     if (scanI2cBus(I2C_SDA_PIN, I2C_SCL_PIN)) {
         oledDetected = true;
         oledSda = I2C_SDA_PIN;
         oledScl = I2C_SCL_PIN;
-    } 
-    // If not found, try alternate pins GPIO8 and GPIO9
-    else if (scanI2cBus(I2C_ALT_SDA, I2C_ALT_SCL)) {
+    } else if (scanI2cBus(I2C_ALT_SDA, I2C_ALT_SCL)) {
         oledDetected = true;
         oledSda = I2C_ALT_SDA;
         oledScl = I2C_ALT_SCL;
@@ -248,87 +241,105 @@ void diagnoseI2CAndOled() {
 
     if (oledDetected) {
         Serial.printf("  ==> Initializing 0.91\" OLED on SDA=GPIO%d, SCL=GPIO%d...\n", oledSda, oledScl);
-        u8g2 = new U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE, oledScl, oledSda);
-        u8g2->begin();
+        if (!u8g2) {
+            u8g2 = new U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE, oledScl, oledSda);
+            u8g2->begin();
+        }
         u8g2->clearBuffer();
         u8g2->setFont(u8g2_font_6x10_tf);
         u8g2->drawStr(0, 9, "D.E.V_Darshan v2.0");
         u8g2->drawHLine(0, 11, 128);
 
         char buf[32];
-        snprintf(buf, sizeof(buf), "S3 %.0fMB Fl | %.0fK H", ESP.getFlashChipSize() / (1024.0*1024.0), ESP.getFreeHeap() / 1024.0);
+        snprintf(buf, sizeof(buf), "S3 4MB Fl | %.0fK Heap", ESP.getFreeHeap() / 1024.0);
         u8g2->drawStr(0, 22, buf);
-        u8g2->drawStr(0, 31, "HW Diagnostics OK!");
+        u8g2->drawStr(0, 31, "Diagnostics Ready!");
         u8g2->sendBuffer();
-        Serial.println("  ==> OLED Screen successfully drawn! [PASS]");
+        Serial.println("  ==> OLED screen drawing verified! [PASS]");
     } else {
-        Serial.println("  ==> [NOTE] 0.91\" OLED not detected yet.");
-        Serial.println("      Wiring reminder: VCC->3V3, GND->GND, SDA->GPIO1, SCL->GPIO2.");
+        Serial.println("  ==> [NOTE] 0.91\" OLED not detected.");
+        Serial.println("      If wired: VCC->3V3, GND->GND, SDA->GPIO1, SCL->GPIO2.");
     }
 }
 
 // ---------------------------------------------------------------------------
-// 7. 4-Tactile Button Tester Setup
+// 7. Buttons Summary
 // ---------------------------------------------------------------------------
-void setupButtons() {
-    printHeader("7. 4-TACTILE BUTTON LIVE MONITOR INITIALIZATION");
-    Serial.println("  Configuring pins with internal pull-ups (Active LOW):");
-
+void printButtonSummary() {
+    printHeader("7. 4-TACTILE BUTTON LIVE MONITOR");
+    Serial.println("  Current Button States (Internal Pull-Up, Active LOW to GND):");
     for (size_t i = 0; i < 4; i++) {
-        pinMode(buttons[i].pin, INPUT_PULLUP);
-        buttons[i].lastState = digitalRead(buttons[i].pin);
-        Serial.printf("    - Button %d: %-18s [Initial State: %s]\n",
+        int state = digitalRead(buttons[i].pin);
+        Serial.printf("    - Button %d: %-18s -> %s\n",
                       i + 1, buttons[i].name,
-                      buttons[i].lastState == LOW ? "PRESSED (LOW)" : "RELEASED (HIGH)");
+                      state == LOW ? "PRESSED (LOW)" : "RELEASED (HIGH)");
     }
-    Serial.println();
-    Serial.println("  ==> Interactive Mode Active:");
-    Serial.println("      Press any of the 4 buttons now to test physical switch & debouncing!");
-    Serial.println("================================================================");
 }
 
 // ---------------------------------------------------------------------------
-// Arduino Setup & Main Diagnostics Run
+// Run All Diagnostics in Sequence
 // ---------------------------------------------------------------------------
-void setup() {
-    // Wait for USB Serial CDC to stabilize
-    Serial.begin(115200);
-    unsigned long startWait = millis();
-    while (!Serial && (millis() - startWait < 3000)) {
-        delay(10);
-    }
-
-    delay(200);
-    printHeader("D.E.V_Darshan v2.0 — ESP32-S3 SUPER MINI PROBE");
-    Serial.println("  Running comprehensive hardware diagnostics...");
-
+void runAllDiagnostics() {
+    printHeader("D.E.V_Darshan v2.0 — ESP32-S3 COMPLETE REPORT");
     diagnoseChip();
     diagnoseFlash();
     diagnoseRAM();
     diagnosePSRAM();
     diagnoseLittleFS();
     diagnoseI2CAndOled();
-    setupButtons();
+    printButtonSummary();
+
+    Serial.println();
+    Serial.println("================================================================");
+    Serial.println("  💡 TIP: Send any key or press ENTER in terminal to reprint!");
+    Serial.println("  💡 TIP: Tap any of the 4 buttons to test them live.");
+    Serial.println("================================================================");
 }
 
 // ---------------------------------------------------------------------------
-// Arduino Loop: Live Button Monitoring & Status Heartbeat
+// Arduino Setup
+// ---------------------------------------------------------------------------
+void setup() {
+    Serial.begin(115200);
+
+    // Initialize button pins with internal pull-up
+    for (size_t i = 0; i < 4; i++) {
+        pinMode(buttons[i].pin, INPUT_PULLUP);
+        buttons[i].lastState = digitalRead(buttons[i].pin);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Arduino Loop
 // ---------------------------------------------------------------------------
 void loop() {
     unsigned long now = millis();
 
-    // Check all 4 buttons
+    // Give 1.5 seconds on boot before auto-printing full report
+    if (!initialReportPrinted && now > 1500) {
+        initialReportPrinted = true;
+        runAllDiagnostics();
+    }
+
+    // If user presses ENTER or sends anything over the Serial monitor, reprint!
+    if (Serial.available()) {
+        while (Serial.available()) {
+            Serial.read(); // Clear incoming buffer
+        }
+        runAllDiagnostics();
+    }
+
+    // Live 4-Button monitor
     for (size_t i = 0; i < 4; i++) {
         int raw = digitalRead(buttons[i].pin);
 
         if (raw != buttons[i].lastState) {
-            if (now - buttons[i].lastDebounce > 30) { // 30ms debounce
+            if (now - buttons[i].lastDebounce > 30) {
                 buttons[i].lastState = raw;
                 buttons[i].lastDebounce = now;
 
                 if (raw == LOW) {
-                    Serial.printf("  >>> [BUTTON PRESSED]  Button %d: %s\n", i + 1, buttons[i].name);
-                    // If OLED is connected, flash button feedback on screen
+                    Serial.printf("\n  >>> [BUTTON PRESSED]  Button %d: %s\n", i + 1, buttons[i].name);
                     if (u8g2) {
                         u8g2->clearBuffer();
                         u8g2->setFont(u8g2_font_6x10_tf);
@@ -347,12 +358,12 @@ void loop() {
         }
     }
 
-    // Heartbeat every 10 seconds to confirm CPU stability & free heap
+    // Periodic Heartbeat every 8 seconds with reminder
     static unsigned long lastHeartbeat = 0;
-    if (now - lastHeartbeat >= 10000) {
+    if (now - lastHeartbeat >= 8000) {
         lastHeartbeat = now;
-        Serial.printf("  [HEARTBEAT] Free Heap: %u bytes (%.1f KB) | Uptime: %lu sec\n",
-                      ESP.getFreeHeap(), ESP.getFreeHeap() / 1024.0, now / 1000);
+        Serial.printf("\n[STATUS] Uptime: %lus | Free Heap: %u bytes (%.1f KB) | (Press ENTER to reprint report)\n",
+                      now / 1000, ESP.getFreeHeap(), ESP.getFreeHeap() / 1024.0);
     }
 
     delay(5);
