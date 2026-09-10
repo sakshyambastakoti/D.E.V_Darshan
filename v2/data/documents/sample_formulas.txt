@@ -1,0 +1,31 @@
+========================================
+D.E.V_Darshan v2 — Sample Physics & Math
+========================================
+
+[1] Classical Mechanics
+- Newton II: F = m * a
+- Kinetic Energy: Ek = 0.5 * m * v^2
+- Potential Energy: Ep = m * g * h
+- Work: W = F * d * cos(theta)
+- Momentum: p = m * v
+- Conservation: m1*u1 + m2*u2 = m1*v1 + m2*v2
+
+[2] Thermodynamics
+- Ideal Gas: P * V = n * R * T
+- First Law: Delta_U = Q - W
+- Heat Capacity: Q = m * c * Delta_T
+
+[3] Calculus Formulas
+- d/dx [x^n] = n * x^(n-1)
+- d/dx [sin(x)] = cos(x)
+- d/dx [cos(x)] = -sin(x)
+- d/dx [e^x] = e^x
+- d/dx [ln(x)] = 1/x
+- Integral [x^n dx] = (x^(n+1))/(n+1) + C
+
+[4] Electromagnetism
+- Ohm's Law: V = I * R
+- Electric Power: P = V * I = I^2 * R
+- Coulomb's Law: F = k * (q1 * q2) / r^2
+- Capacitance: C = Q / V
+========================================

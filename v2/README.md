@@ -9,6 +9,19 @@ Welcome to **D.E.V_Darshan v2.0**. This edition upgrades the hardware foundation
 
 ---
 
+## 📚 Technical Documentation Index
+
+All in-depth hardware, electrical, battery, and storage guides are organized in the [`v2/docs/`](docs/) directory:
+
+| Document | Description |
+| :--- | :--- |
+| 📋 [**Hardware Configuration & Specs**](docs/BOARD_CONFIG.md) | Verified ESP32-S3FH4R2 chip specs, 2MB PSRAM, 4MB Flash, and locked settings |
+| 🔌 [**Circuit Schematic & Pin Mapping**](docs/CIRCUIT_PINOUT.md) | 1:1 physical board diagram, 0.91" OLED wiring, 4-button cluster, and B+/B- pads |
+| 🔋 [**Battery, Charging & Power Guide**](docs/BATTERY_AND_POWER_GUIDE.md) | Recommended 3.7V LiPo models, onboard charging, BOOST jumper, and battery life calculations |
+| 💾 [**Storage, LittleFS & OTA Guide**](docs/STORAGE_AND_OTA_GUIDE.md) | 4MB partition map, 1.38MB text storage capacity, and dual-slot wireless OTA mechanics |
+
+---
+
 ## ⚡ Method 1: Instant 5-Second Hardware Probe (No Compiling Required)
 
 If you have your ESP32-S3 Super Mini plugged into your computer via USB-C, you can instantly query its exact Flash size and chip model using `esptool`:
