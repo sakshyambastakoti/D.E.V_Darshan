@@ -18,6 +18,7 @@ All in-depth hardware, electrical, battery, and storage guides are organized in 
 | 📋 [**Hardware Configuration & Specs**](docs/BOARD_CONFIG.md) | Verified ESP32-S3FH4R2 chip specs, 2MB PSRAM, 4MB Flash, and locked settings |
 | 🔌 [**Circuit Schematic & Pin Mapping**](docs/CIRCUIT_PINOUT.md) | 1:1 physical board diagram, 0.91" OLED wiring, 4-button cluster, and B+/B- pads |
 | 🔋 [**Battery, Charging & Power Guide**](docs/BATTERY_AND_POWER_GUIDE.md) | Recommended 3.7V LiPo models, onboard charging, BOOST jumper, and battery life calculations |
+| 📊 [**402030P 400mAh Battery Engineering Report**](docs/BATTERY_402030P_POWER_REPORT.md) | Detailed charging curves, run times, BIS R-41202096 safety, and operating benchmarks |
 | 💾 [**Storage, LittleFS & OTA Guide**](docs/STORAGE_AND_OTA_GUIDE.md) | 4MB partition map, 1.38MB text storage capacity, and dual-slot wireless OTA mechanics |
 
 ---

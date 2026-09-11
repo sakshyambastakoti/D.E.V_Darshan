@@ -54,7 +54,8 @@ To fit inside a scientific calculator (like the Casio fx-991ES, fx-991EX, fx-82M
 
 | Model | Dimensions (T × W × L) | Capacity | Fitment / Where to Place | Continuous Reading Life |
 | :--- | :--- | :--- | :--- | :--- |
-| **402030** *(Best Overall)* | **4.0 × 20 × 30 mm** | **180 – 220 mAh** | Fits perfectly inside standard AAA battery bay or hollowed calculator space | **~7 to 8.5 Hours** |
+| **402030P** *(400mAh High-Density)* | **4.0 × 20 × 30 mm** | **400 mAh** | **Ideal stealth fit**; certified BIS R-41202096 with built-in PCM | **~13.1 Hours** *(See [402030P Report](BATTERY_402030P_POWER_REPORT.md))* |
+| **402030** *(Standard)* | **4.0 × 20 × 30 mm** | **180 – 220 mAh** | Fits perfectly inside standard AAA battery bay or hollowed calculator space | **~7 to 8.5 Hours** |
 | **502030** | **5.0 × 20 × 30 mm** | **250 – 300 mAh** | Slightly thicker; fits inside Casio fx-991EX with minor internal rib trimming | **~10 to 12 Hours** |
 | **302030** *(Ultra-Thin)* | **3.0 × 20 × 30 mm** | **120 – 150 mAh** | Ultra slim; fits in the tightest calculator shells with zero bulging | **~5 to 6 Hours** |
 | **603040** *(Max Endurance)*| **6.0 × 30 × 40 mm** | **600 – 700 mAh** | Large capacity; requires removing internal calculator battery brackets | **~24 to 28 Hours** |
@@ -90,6 +91,7 @@ Calculated using real-world efficiency (85% usable battery capacity):
 | **150 mAh** (302030) | **5.5 Hours** | ~4 Days | ~1.6 Hours | ❌ Do Not Use Boost |
 | **200 mAh** (402030) | **7.5 Hours** | ~6 Days | ~2.2 Hours | ❌ Do Not Use Boost |
 | **300 mAh** (502030) | **11.5 Hours** | ~9 Days | ~3.3 Hours | ❌ Do Not Use Boost |
+| **400 mAh** (402030P) | **13.1 Hours** | **~9.5 Days** | **~4.8 Hours** | **~1.7 Hours** (Safe at 0.75C) |
 | **500 mAh** (503040) | **19.0 Hours** | ~15 Days | ~5.5 Hours | **~1.9 Hours** (Bridged) |
 | **700 mAh** (603040) | **26.5 Hours** | ~22 Days | ~7.8 Hours | **~2.6 Hours** (Bridged) |
 
